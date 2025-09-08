@@ -1,0 +1,4 @@
+monai>=1.3.0
+nibabel
+scikit-image
+numpy
