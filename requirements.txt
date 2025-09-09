@@ -1,4 +1,5 @@
 monai
+monai-deploy-app-sdk
 nibabel
 pydicom
 torch
