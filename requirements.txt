@@ -3,3 +3,8 @@ nibabel
 pydicom
 torch
 transformers
+fastapi
+uvicorn
+pydantic
+requests
+python-multipart

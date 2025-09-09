@@ -1,0 +1,8 @@
+FROM node:18-alpine
+WORKDIR /app
+COPY ui/package.json ui/tsconfig.json ./
+COPY ui/src ./src
+COPY ui/public ./public
+RUN npm install && npm run build
+EXPOSE 3000
+CMD ["npm", "start"]
