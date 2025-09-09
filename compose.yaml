@@ -1,0 +1,33 @@
+version: "3.8"
+services:
+  ui:
+    build: { context: ., dockerfile: docker/Dockerfile.ui }
+    ports: ["3000:3000"]
+  gateway:
+    build: { context: ., dockerfile: docker/Dockerfile.gateway }
+    volumes: ["./data:/data"]
+    ports: ["8000:8000"]
+    depends_on: [agent]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
+  agent:
+    build: { context: ., dockerfile: docker/Dockerfile.agent }
+    environment: ["EXPERTS_URL=http://experts:8002"]
+    ports: ["8001:8001"]
+    depends_on: [experts]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
+  experts:
+    build: { context: ., dockerfile: docker/Dockerfile.experts }
+    ports: ["8002:8002"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]

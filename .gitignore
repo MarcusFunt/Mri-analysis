@@ -1,2 +1,6 @@
-data/
 __pycache__/
+*.pyc
+node_modules/
+.ui
+.env
+/data/
