@@ -1,0 +1,48 @@
+.drop-zone {
+  border: 2px dashed #ccc;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 1rem;
+}
+
+.drop-zone.over {
+  border-color: #0ea5e9;
+  background-color: #f0f9ff;
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  color: #fff;
+  font-weight: bold;
+  margin-right: 0.5rem;
+}
+
+.pill.normal {
+  background-color: #16a34a;
+}
+
+.pill.abnormal {
+  background-color: #dc2626;
+}
+
+.result-status {
+  display: flex;
+  align-items: center;
+}
+
+.thumbnails {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.thumbnails img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border: 1px solid #ccc;
+}
