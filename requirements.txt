@@ -1,11 +1,12 @@
+fastapi
 monai
 monai-deploy-app-sdk
 nibabel
-pydicom
-torch
-fastapi
-uvicorn
+numpy
 pydantic
-requests
+pydicom
 python-multipart
+requests
 scipy
+torch
+uvicorn
