@@ -1,8 +1,5 @@
 version: "3.8"
 services:
-  ui:
-    build: { context: ., dockerfile: docker/Dockerfile.ui }
-    ports: ["3000:3000"]
   gateway:
     build: { context: ., dockerfile: docker/Dockerfile.gateway }
     volumes: ["./data:/data"]

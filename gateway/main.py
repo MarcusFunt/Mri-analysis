@@ -1,18 +1,40 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+import json
+import logging
+import uuid
+import zipfile
 from pathlib import Path
-import shutil, zipfile, requests, uuid, json
+
+import requests
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
 from .contracts import AgentAnalyzeReq, AgentAnalyzeResp
 from .app_sdk_io import write_dicom_sr, write_dicom_seg
 from .settings import BASE, ABNORMAL_THRESHOLD_CC
+from .job_store import JobStore
 
 AGENT_URL = "http://agent:8001/analyze"
 
 app = FastAPI()
-STATE: dict = {}
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+logger = logging.getLogger(__name__)
+store = JobStore()
 
 
 @app.post("/upload")
 async def upload(study: UploadFile = File(...)):
+    if study.content_type != "application/zip":
+        raise HTTPException(400, "file must be a ZIP archive")
+    study.file.seek(0)
+    if not zipfile.is_zipfile(study.file):
+        raise HTTPException(400, "invalid ZIP file")
+
     job_id = str(uuid.uuid4())
     job = BASE / job_id
     dcm = job / "dicom"
@@ -20,17 +42,25 @@ async def upload(study: UploadFile = File(...)):
     out = job / "out"
     for p in (dcm, work, out):
         p.mkdir(parents=True, exist_ok=True)
+
+    study.file.seek(0)
     with zipfile.ZipFile(study.file) as z:
-        z.extractall(dcm)
-    STATE[job_id] = {"state": "uploaded", "paths": {"dicom": str(dcm), "work": str(work), "out": str(out)}}
+        for member in z.namelist():
+            member_path = (dcm / member).resolve()
+            if not str(member_path).startswith(str(dcm.resolve())):
+                raise HTTPException(400, "invalid file path in zip")
+            z.extract(member, dcm)
+
+    store.create(job_id, {"dicom": str(dcm), "work": str(work), "out": str(out)})
     return {"job_id": job_id}
 
 
 @app.post("/analyze/{job_id}")
 def analyze(job_id: str, anatomy: dict):
-    if job_id not in STATE:
+    job = store.get(job_id)
+    if not job:
         raise HTTPException(404, "job not found")
-    paths = STATE[job_id]["paths"]
+    paths = job["paths"]
     payload = AgentAnalyzeReq(
         study_dir=paths["dicom"],
         anatomy=anatomy.get("anatomy", "brain"),
@@ -41,11 +71,20 @@ def analyze(job_id: str, anatomy: dict):
             "explicit_uncertainty": True,
             "regulatory_disclaimer": True,
         },
+        abnormal_threshold_cc=ABNORMAL_THRESHOLD_CC,
     ).dict()
-    STATE[job_id]["state"] = "running"
-    r = requests.post(AGENT_URL, json=payload, timeout=600)
-    r.raise_for_status()
-    resp = AgentAnalyzeResp(**r.json())
+    store.update_state(job_id, "running")
+    try:
+        r = requests.post(AGENT_URL, json=payload, timeout=600)
+        r.raise_for_status()
+        data = r.json()
+    except requests.RequestException as e:
+        logger.exception("agent request failed")
+        raise HTTPException(502, "agent request failed") from e
+    except ValueError as e:
+        logger.exception("invalid JSON from agent")
+        raise HTTPException(502, "invalid agent response") from e
+    resp = AgentAnalyzeResp(**data)
 
     # Write DICOM SR/SEG via App SDK
     sr_path = write_dicom_sr(
@@ -82,13 +121,13 @@ def analyze(job_id: str, anatomy: dict):
         },
     }
     (Path(paths["out"]) / f"{job_id}.json").write_text(json.dumps(result, indent=2))
-    STATE[job_id]["state"] = "done"
-    STATE[job_id]["result"] = result
+    store.set_result(job_id, result)
     return result
 
 
 @app.get("/result/{job_id}")
 def result(job_id: str):
-    if job_id not in STATE:
+    job = store.get(job_id)
+    if not job:
         raise HTTPException(404, "job not found")
-    return STATE[job_id].get("result") or {"job_id": job_id, "state": STATE[job_id]["state"]}
+    return job.get("result") or {"job_id": job_id, "state": job["state"]}

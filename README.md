@@ -1,16 +1,19 @@
 # MRI Auto-Report (Normal vs Abnormal)
 
 This repository implements a minimal end-to-end pipeline for generating a
-radiology report from an uploaded brain MRI study. It follows the architecture
-specified in the project brief:
+radiology report from an uploaded brain MRI study. It now features a small
+local Python GUI for interacting with the system.
 
-* **UI (React)** – single page app for uploading a study and displaying the
+* **Local GUI (Tkinter)** – desktop app for uploading a study and displaying the
   result.
 * **Gateway (FastAPI)** – orchestrates upload, analysis and packaging of DICOM
   SR/SEG outputs.
 * **Agent Service** – wraps the MONAI Radiology Agent Framework and VILA-M3 to
   draft the report and coordinate expert tools.
 * **Expert Hub** – microservice hosting segmentation models such as BraTS.
+
+The abnormality volume threshold can be customized via the
+`ABNORMAL_THRESHOLD_CC` environment variable shared by the gateway and agent.
 
 A `docker-compose` file is provided to launch all services together. Each job's
 artifacts are stored under `/data/jobs/<job_id>/` on the gateway container.
@@ -31,4 +34,10 @@ To run the full stack with Docker:
 
 ```bash
 docker compose up --build
+```
+
+Launch the desktop interface:
+
+```bash
+python gui/app.py
 ```
