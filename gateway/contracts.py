@@ -7,6 +7,7 @@ class AgentAnalyzeReq(BaseModel):
     anatomy: str = "brain"
     tools: List[str] = ["brats"]
     constraints: Dict[str, Any] = {}
+    abnormal_threshold_cc: Optional[float] = None
 
 
 class AgentAnalyzeResp(BaseModel):

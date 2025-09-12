@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
+
 from .tools_registry import EXPERTS, run_tool
 from .vila_loader import load_vila, run_vlm
+from .settings import ABNORMAL_THRESHOLD_CC
 
 app = FastAPI()
 vlm = load_vila()
@@ -13,6 +15,7 @@ class AnalyzeReq(BaseModel):
     anatomy: str = "brain"
     tools: List[str] = ["brats"]
     constraints: Dict[str, Any] = {}
+    abnormal_threshold_cc: Optional[float] = None
 
 
 @app.post("/analyze")
@@ -30,7 +33,12 @@ def analyze(req: AnalyzeReq):
     prompt = render_prompt(req.anatomy, stats, req.constraints)
 
     text, prob = run_vlm(vlm, prompt)
-    abnormal = (stats.get("lesion_volume_cc", 0) or 0) > 0.5
+    threshold = (
+        req.abnormal_threshold_cc
+        if req.abnormal_threshold_cc is not None
+        else ABNORMAL_THRESHOLD_CC
+    )
+    abnormal = (stats.get("lesion_volume_cc", 0) or 0) > threshold
 
     return {
         "normal": not abnormal,
@@ -72,3 +80,4 @@ def _impression(text: str, abnormal: bool) -> str:
 
 def _bullets(text: str) -> List[str]:
     return [ln.strip("- ").strip() for ln in text.split("\n") if ln.strip().startswith("-")][:6]
+
