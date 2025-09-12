@@ -1,9 +1,9 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
-import requests
 import json
 
-GATEWAY_URL = "http://localhost:8000"
+from desktop_pipeline import analyze_zip
+
 
 class App(tk.Tk):
     def __init__(self):
@@ -30,14 +30,7 @@ class App(tk.Tk):
             messagebox.showerror("Error", "Please select a ZIP file")
             return
         try:
-            with open(path, "rb") as f:
-                resp = requests.post(f"{GATEWAY_URL}/upload", files={"study": ("study.zip", f, "application/zip")})
-            resp.raise_for_status()
-            job_id = resp.json()["job_id"]
-
-            resp = requests.post(f"{GATEWAY_URL}/analyze/{job_id}", json={"anatomy": "brain"})
-            resp.raise_for_status()
-            data = resp.json()
+            data = analyze_zip(path)
             self.output.delete("1.0", tk.END)
             self.output.insert(tk.END, json.dumps(data, indent=2))
         except Exception as e:
